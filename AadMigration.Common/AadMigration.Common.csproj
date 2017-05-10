@@ -5,10 +5,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Folder Include="GraphApi\" />
-  </ItemGroup>
-
-  <ItemGroup>
     <PackageReference Include="refit" Version="3.0.1" />
   </ItemGroup>
 
