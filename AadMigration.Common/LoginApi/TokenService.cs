@@ -10,9 +10,9 @@ namespace AadMigration.Common.LoginApi
     public class TokenService : ITokenService
     {
         private readonly ILogger<TokenService> _logger;
-        private readonly IOptions<TenantSettings> _tenantSettings;
+        private readonly TenantSettings _tenantSettings;
 
-        public TokenService(ILogger<TokenService> logger, IOptions<TenantSettings> tenantSettings)
+        public TokenService(ILogger<TokenService> logger, TenantSettings tenantSettings)
         {
             _logger = logger;
             _tenantSettings = tenantSettings;
@@ -25,13 +25,13 @@ namespace AadMigration.Common.LoginApi
                 _logger.LogDebug($"Tenant settings used : {JsonConvert.SerializeObject(_tenantSettings)}");
                 var tokenRequest = new AzureAdTokenRequest
                 {
-                    Resource = _tenantSettings.Value.Resource,
-                    ClientId = _tenantSettings.Value.ClientId,
-                    ClientSecret = _tenantSettings.Value.ClientSecret,
+                    Resource = _tenantSettings.Resource,
+                    ClientId = _tenantSettings.ClientId,
+                    ClientSecret = _tenantSettings.ClientSecret,
                     GrantType = "client_credentials"
                 };
 
-                string baseUrl = $"{_tenantSettings.Value.Instance}{_tenantSettings.Value.Tenant}";
+                string baseUrl = $"{_tenantSettings.Instance}{_tenantSettings.Tenant}";
                 var azureAdGraphApi = RestService.For<ILoginApi>(baseUrl);
                 return azureAdGraphApi.GetToken(tokenRequest);
             }

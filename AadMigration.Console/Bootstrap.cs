@@ -6,6 +6,7 @@ using DryIoc;
 using DryIoc.Microsoft.DependencyInjection;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 namespace AadMigration.Console
 {
@@ -14,14 +15,13 @@ namespace AadMigration.Console
         public static IServiceProvider ConfigureServices(IServiceCollection services, IConfigurationRoot configuration)
         {
             services.AddLogging();
-
-            services.Configure<TenantSettings>(configuration.GetSection("TenantSettings"));
-
             var container = new Container().WithDependencyInjectionAdapter(services);
 
-            container.Register<IGraphApiService, GraphApiService>();
-            container.Register<ITokenService, TokenService>();
+            container.Register<IGraphApiService, GraphApiService>(reuse: Reuse.Singleton);
+            container.Register<ITokenService, TokenService>(reuse:Reuse.Singleton);
 
+            container.RegisterDelegate(resolver => configuration.GetSection("TenantSettings").Get<TenantSettings>(), reuse:Reuse.Singleton);
+           
             return container.Resolve<IServiceProvider>();
         }
     }

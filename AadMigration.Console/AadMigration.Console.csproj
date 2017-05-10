@@ -18,6 +18,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\AadMigration.Common\AadMigration.Common.csproj" />
+    <None Include="appsettings.json" CopyToOutputDirectory="Always" />
   </ItemGroup>
 
 </Project>

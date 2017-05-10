@@ -13,9 +13,9 @@ namespace AadMigration.Common.GraphApi
     public class GraphApiService : IGraphApiService
     {
         private readonly ILogger<TokenService> _logger;
-        private readonly IOptions<TenantSettings> _tenantSettings;
+        private readonly TenantSettings _tenantSettings;
 
-        public GraphApiService(ILogger<TokenService> logger, IOptions<TenantSettings> tenantSettings)
+        public GraphApiService(ILogger<TokenService> logger, TenantSettings tenantSettings)
         {
             _logger = logger;
             _tenantSettings = tenantSettings;
@@ -23,7 +23,7 @@ namespace AadMigration.Common.GraphApi
 
         public async Task<IEnumerable<User>> GetUsersAsync(string token)
         {
-            string baseUrl = $"{_tenantSettings.Value.Resource}/{_tenantSettings.Value.Tenant}";
+            string baseUrl = $"{_tenantSettings.Resource}/{_tenantSettings.Tenant}";
             var azureAdGraphApi = RestService.For<IGraphApi>(baseUrl,
                 new RefitSettings
                 {
@@ -45,10 +45,10 @@ namespace AadMigration.Common.GraphApi
             user.PasswordProfile = new Passwordprofile
             {
                 ForceChangePasswordNextLogin = true,
-                Password = _tenantSettings.Value.DefaultPassword
+                Password = _tenantSettings.DefaultPassword
             };
 
-            string baseUrl = $"{_tenantSettings.Value.Resource}/{_tenantSettings.Value.Tenant}";
+            string baseUrl = $"{_tenantSettings.Resource}/{_tenantSettings.Tenant}";
             var azureAdGraphApi = RestService.For<IGraphApi>(baseUrl,
                 new RefitSettings
                 {
