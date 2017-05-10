@@ -6,7 +6,7 @@ namespace AadMigration.Common.GraphApi
 {
     public interface IGraphApi
     {
-        [Get("/users?api-version={apiVersion}")]
+        [Get("/users?$top=999&api-version={apiVersion}")]
         Task<HttpResponseMessage> GetUsersAsync([Header("Authorization")] string authorization, string apiVersion = "1.6");
 
         [Post("/users?api-version={apiVersion}")]

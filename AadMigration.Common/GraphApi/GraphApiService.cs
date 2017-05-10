@@ -35,7 +35,8 @@ namespace AadMigration.Common.GraphApi
             var response = await azureAdGraphApi.GetUsersAsync($"Bearer {token}");
             if (response.IsSuccessStatusCode)
             {
-                return JsonConvert.DeserializeObject<IEnumerable<User>>(await response.Content.ReadAsStringAsync());
+                var wrapper = JsonConvert.DeserializeObject<OdataWrapper<IEnumerable<User>>>(await response.Content.ReadAsStringAsync());
+                return wrapper.Value;
             }
             return null;
         }

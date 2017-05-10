@@ -1,6 +1,8 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
+using AadMigration.Common.GraphApi;
 using AadMigration.Common.LoginApi;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -17,7 +19,7 @@ namespace AadMigration.Console
 
         public static async Task MainAsync()
         {
-            
+
             var builder = new ConfigurationBuilder()
                 .SetBasePath(AppContext.BaseDirectory)
                 .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true);
@@ -30,7 +32,9 @@ namespace AadMigration.Console
 
             var tokenService = provider.GetService<ITokenService>();
             AzureAdTokenResponse tokenResponse = await tokenService.GetAsync();
-            
+
+            var graphApiService = provider.GetService<IGraphApiService>();
+            IEnumerable<User> users = await graphApiService.GetUsersAsync(tokenResponse.Token);
         }
     }
 }
