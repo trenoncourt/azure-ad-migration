@@ -1,7 +1,9 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using AadMigration.Common.LoginApi;
 using AadMigration.Common.Settings;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
@@ -13,17 +15,18 @@ namespace AadMigration.Common.GraphApi
     public class GraphApiService : IGraphApiService
     {
         private readonly ILogger<TokenService> _logger;
-        private readonly TenantSettings _tenantSettings;
+        private readonly IServiceProvider _provider;
 
-        public GraphApiService(ILogger<TokenService> logger, TenantSettings tenantSettings)
+        public GraphApiService(ILogger<TokenService> logger, IServiceProvider provider)
         {
             _logger = logger;
-            _tenantSettings = tenantSettings;
+            _provider = provider;
         }
 
         public async Task<OdataWrapper<IEnumerable<User>>> GetUsersAsync(string token, string nextLink = "")
         {
-            string baseUrl = $"{_tenantSettings.Resource}/{_tenantSettings.Tenant}";
+            var tenantSettings = _provider.GetService<TenantSettingsFrom>();
+            string baseUrl = $"{tenantSettings.Resource}/{tenantSettings.Tenant}";
             var azureAdGraphApi = RestService.For<IGraphApi>(baseUrl,
                 new RefitSettings
                 {
@@ -45,13 +48,17 @@ namespace AadMigration.Common.GraphApi
 
         public Task AddUserAsync(User user, string token)
         {
+            var tenantSettingsFrom = _provider.GetService<TenantSettingsFrom>();
+            var tenantSettingsTo = _provider.GetService<TenantSettingsTo>();
             user.PasswordProfile = new Passwordprofile
             {
                 ForceChangePasswordNextLogin = true,
-                Password = _tenantSettings.DefaultPassword
+                Password = tenantSettingsTo.DefaultPassword
             };
 
-            string baseUrl = $"{_tenantSettings.Resource}/{_tenantSettings.Tenant}";
+            user.UserPrincipalName = user.UserPrincipalName.Replace(tenantSettingsFrom.Tenant, tenantSettingsTo.Tenant);
+
+            string baseUrl = $"{tenantSettingsTo.Resource}/{tenantSettingsTo.Tenant}";
             var azureAdGraphApi = RestService.For<IGraphApi>(baseUrl,
                 new RefitSettings
                 {

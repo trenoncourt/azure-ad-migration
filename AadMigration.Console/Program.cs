@@ -1,19 +1,21 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using AadMigration.Common.GraphApi;
 using AadMigration.Common.LoginApi;
+using AadMigration.Common.Settings;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
 
 namespace AadMigration.Console
 {
     class Program
     {
         private static IServiceProvider _provider;
+        private static ILogger _logger;
 
         static void Main()
         {
@@ -33,13 +35,20 @@ namespace AadMigration.Console
                 .GetService<ILoggerFactory>()
                 .AddConsole(configuration.GetSection("Logging"));
 
+            _logger = _provider.GetService<ILogger<Program>>();
+
             // Get AAD API token.
             var tokenService = _provider.GetService<ITokenService>();
-            AzureAdTokenResponse tokenResponse = await tokenService.GetAsync();
+            var settingsFrom = _provider.GetService<TenantSettingsFrom>();
+            AzureAdTokenResponse tokenResponseFrom = await tokenService.GetAsync(settingsFrom);
 
             // Get All Users.
-            IEnumerable<User> users = await GetUsersAsync(tokenResponse.Token);
+            IEnumerable<User> users = await GetUsersAsync(tokenResponseFrom.Token);
 
+            var settingsTo = _provider.GetService<TenantSettingsTo>();
+            AzureAdTokenResponse tokenResponseTo = await tokenService.GetAsync(settingsTo);
+
+            await ImportUsersAsync(users, tokenResponseTo.Token);
         }
 
         private static async Task<IEnumerable<User>> GetUsersAsync(string token)
@@ -56,6 +65,24 @@ namespace AadMigration.Console
                 users.AddRange(response.Value);
             }
             return users;
+        }
+
+        private static async Task ImportUsersAsync(IEnumerable<User> users, string token)
+        {
+            var graphApiService = _provider.GetService<IGraphApiService>();
+
+            foreach (var user in users)
+            {
+                try
+                {
+                    _logger.LogInformation($"Import user: {user.DisplayName} / {user.UserPrincipalName}");
+                    await graphApiService.AddUserAsync(user, token);
+                }
+                catch (Exception)
+                {
+                    _logger.LogError("Unable to import."); // todo
+                }
+            }
         }
     }
 }

@@ -8,6 +8,5 @@
         public string ClientId { get; set; }
         public string ClientSecret { get; set; }
         public string ApiVersion { get; set; }
-        public string DefaultPassword { get; set; }
     }
 }

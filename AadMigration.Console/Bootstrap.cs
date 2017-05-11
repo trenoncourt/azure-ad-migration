@@ -20,7 +20,8 @@ namespace AadMigration.Console
             container.Register<IGraphApiService, GraphApiService>(reuse: Reuse.Singleton);
             container.Register<ITokenService, TokenService>(reuse:Reuse.Singleton);
 
-            container.RegisterDelegate(resolver => configuration.GetSection("TenantSettings").Get<TenantSettings>(), reuse:Reuse.Singleton);
+            container.RegisterDelegate(resolver => configuration.GetSection("TenantSettingsFrom").Get<TenantSettingsFrom>(), reuse:Reuse.Singleton);
+            container.RegisterDelegate(resolver => configuration.GetSection("TenantSettingsTo").Get<TenantSettingsTo>(), reuse:Reuse.Singleton);
            
             return container.Resolve<IServiceProvider>();
         }
