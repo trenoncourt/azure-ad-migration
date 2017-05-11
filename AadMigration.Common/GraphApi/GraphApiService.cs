@@ -21,7 +21,7 @@ namespace AadMigration.Common.GraphApi
             _tenantSettings = tenantSettings;
         }
 
-        public async Task<IEnumerable<User>> GetUsersAsync(string token)
+        public async Task<OdataWrapper<IEnumerable<User>>> GetUsersAsync(string token, string nextLink = "")
         {
             string baseUrl = $"{_tenantSettings.Resource}/{_tenantSettings.Tenant}";
             var azureAdGraphApi = RestService.For<IGraphApi>(baseUrl,
@@ -32,11 +32,13 @@ namespace AadMigration.Common.GraphApi
                         ContractResolver = new CamelCasePropertyNamesContractResolver()
                     }
                 });
-            var response = await azureAdGraphApi.GetUsersAsync($"Bearer {token}");
+            var response = await azureAdGraphApi.GetUsersAsync($"Bearer {token}", nextLink);
             if (response.IsSuccessStatusCode)
             {
                 var wrapper = JsonConvert.DeserializeObject<OdataWrapper<IEnumerable<User>>>(await response.Content.ReadAsStringAsync());
-                return wrapper.Value;
+                wrapper.NextLink = wrapper.NextLink
+                    ?.Replace("directoryObjects/$/Microsoft.DirectoryServices.User?$skiptoken=", "");
+                return wrapper;
             }
             return null;
         }

@@ -5,7 +5,7 @@ namespace AadMigration.Common.GraphApi
 {
     public interface IGraphApiService
     {
-        Task<IEnumerable<User>> GetUsersAsync(string token);
+        Task<OdataWrapper<IEnumerable<User>>> GetUsersAsync(string token, string nextLink = "");
 
         Task AddUserAsync(User user, string token);
     }
