@@ -1,4 +1,7 @@
-﻿using System.Threading.Tasks;
+﻿using System.Collections.Generic;
+using System.Net.Http;
+using System.Threading.Tasks;
+using AadMigration.Common.GraphApi;
 using AadMigration.Common.Settings;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
@@ -15,7 +18,7 @@ namespace AadMigration.Common.LoginApi
             _logger = logger;
         }
 
-        public Task<AzureAdTokenResponse> GetAsync(TenantSettings tennantSetting)
+        public async Task<AzureAdTokenResponse> GetAsync(TenantSettings tennantSetting)
         {
             using (_logger.BeginScope("Get AAD token."))
             {
@@ -25,12 +28,23 @@ namespace AadMigration.Common.LoginApi
                     Resource = tennantSetting.Resource,
                     ClientId = tennantSetting.ClientId,
                     ClientSecret = tennantSetting.ClientSecret,
-                    GrantType = "client_credentials"
+                    GrantType = "client_credentialsa"
                 };
 
                 string baseUrl = $"{tennantSetting.Instance}{tennantSetting.Tenant}";
-                var azureAdGraphApi = RestService.For<ILoginApi>(baseUrl);
-                return azureAdGraphApi.GetToken(tokenRequest);
+                var loginApi = RestService.For<ILoginApi>(baseUrl);
+
+                HttpResponseMessage response = await loginApi.GetToken(tokenRequest);
+                if (response.IsSuccessStatusCode)
+                {
+                    return JsonConvert.DeserializeObject<AzureAdTokenResponse>(await response.Content.ReadAsStringAsync());
+                }
+
+                var error = JsonConvert.DeserializeObject<AuthError>(await response.Content.ReadAsStringAsync());
+                _logger.LogError(
+                    $"Unable to get token. Error: {error.Error}, Description: {error.Description}");
+                response.EnsureSuccessStatusCode();
+                return null;
             }
         }
     }

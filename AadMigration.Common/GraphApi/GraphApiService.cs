@@ -1,11 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Net.Http;
 using System.Threading.Tasks;
 using AadMigration.Common.LoginApi;
 using AadMigration.Common.Settings;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 using Refit;
@@ -25,49 +25,67 @@ namespace AadMigration.Common.GraphApi
 
         public async Task<OdataWrapper<IEnumerable<User>>> GetUsersAsync(string token, string nextLink = "")
         {
-            var tenantSettings = _provider.GetService<TenantSettingsFrom>();
-            string baseUrl = $"{tenantSettings.Resource}/{tenantSettings.Tenant}";
-            var azureAdGraphApi = RestService.For<IGraphApi>(baseUrl,
-                new RefitSettings
-                {
-                    JsonSerializerSettings = new JsonSerializerSettings
-                    {
-                        ContractResolver = new CamelCasePropertyNamesContractResolver()
-                    }
-                });
-            var response = await azureAdGraphApi.GetUsersAsync($"Bearer {token}", nextLink);
-            if (response.IsSuccessStatusCode)
+            using (_logger.BeginScope("Get users per page in AAD with graph api."))
             {
-                var wrapper = JsonConvert.DeserializeObject<OdataWrapper<IEnumerable<User>>>(await response.Content.ReadAsStringAsync());
-                wrapper.NextLink = wrapper.NextLink
-                    ?.Replace("directoryObjects/$/Microsoft.DirectoryServices.User?$skiptoken=", "");
-                return wrapper;
+                var tenantSettings = _provider.GetService<TenantSettingsFrom>();
+                string baseUrl = $"{tenantSettings.Resource}/{tenantSettings.Tenant}";
+                var azureAdGraphApi = RestService.For<IGraphApi>(baseUrl,
+                    new RefitSettings
+                    {
+                        JsonSerializerSettings = new JsonSerializerSettings
+                        {
+                            ContractResolver = new CamelCasePropertyNamesContractResolver()
+                        }
+                    });
+                HttpResponseMessage response = await azureAdGraphApi.GetUsersAsync($"Bearer {token}", nextLink);
+                if (response.IsSuccessStatusCode)
+                {
+                    var wrapper =
+                        JsonConvert.DeserializeObject<OdataWrapper<IEnumerable<User>>>(await response.Content
+                            .ReadAsStringAsync());
+                    wrapper.NextLink = wrapper.NextLink
+                        ?.Replace("directoryObjects/$/Microsoft.DirectoryServices.User?$skiptoken=", "");
+                    return wrapper;
+                }
+
+                var oDataError = JsonConvert.DeserializeObject<OdataError>(await response.Content.ReadAsStringAsync());
+                _logger.LogWarning(
+                    $"Unable to get users. Code: {oDataError.Error.Code}, Message: {oDataError.Error.Message.Value}");
+                return null;
             }
-            return null;
         }
 
-        public Task AddUserAsync(User user, string token)
+        public async Task AddUserAsync(User user, string token)
         {
-            var tenantSettingsFrom = _provider.GetService<TenantSettingsFrom>();
-            var tenantSettingsTo = _provider.GetService<TenantSettingsTo>();
-            user.PasswordProfile = new Passwordprofile
+            using (_logger.BeginScope("Add user in AAD with graph api."))
             {
-                ForceChangePasswordNextLogin = true,
-                Password = tenantSettingsTo.DefaultPassword
-            };
-
-            user.UserPrincipalName = user.UserPrincipalName.Replace(tenantSettingsFrom.Tenant, tenantSettingsTo.Tenant);
-
-            string baseUrl = $"{tenantSettingsTo.Resource}/{tenantSettingsTo.Tenant}";
-            var azureAdGraphApi = RestService.For<IGraphApi>(baseUrl,
-                new RefitSettings
+                var tenantSettingsFrom = _provider.GetService<TenantSettingsFrom>();
+                var tenantSettingsTo = _provider.GetService<TenantSettingsTo>();
+                user.PasswordProfile = new Passwordprofile
                 {
-                    JsonSerializerSettings = new JsonSerializerSettings
+                    ForceChangePasswordNextLogin = true,
+                    Password = tenantSettingsTo.DefaultPassword
+                };
+
+                user.UserPrincipalName =
+                    user.UserPrincipalName.Replace(tenantSettingsFrom.Tenant, tenantSettingsTo.Tenant);
+
+                string baseUrl = $"{tenantSettingsTo.Resource}/{tenantSettingsTo.Tenant}";
+                var azureAdGraphApi = RestService.For<IGraphApi>(baseUrl,
+                    new RefitSettings
                     {
-                        ContractResolver = new CamelCasePropertyNamesContractResolver()
-                    }
-                });
-            return azureAdGraphApi.PostUserAsync(user, $"Bearer {token}");
+                        JsonSerializerSettings = new JsonSerializerSettings
+                        {
+                            ContractResolver = new CamelCasePropertyNamesContractResolver()
+                        }
+                    });
+                HttpResponseMessage response = await azureAdGraphApi.PostUserAsync(user, $"Bearer {token}");
+                if (!response.IsSuccessStatusCode)
+                {
+                    var oDataError = JsonConvert.DeserializeObject<OdataError>(await response.Content.ReadAsStringAsync());
+                    _logger.LogWarning($"Unable to add user {user.DisplayName} / {user.UserPrincipalName}. Code: {oDataError.Error.Code}, Message: {oDataError.Error.Message.Value}");
+                }
+            }
         }
     }
 }

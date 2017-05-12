@@ -10,6 +10,6 @@ namespace AadMigration.Common.GraphApi
         Task<HttpResponseMessage> GetUsersAsync([Header("Authorization")] string authorization, string nextLink = "", string apiVersion = "1.6");
 
         [Post("/users?api-version={apiVersion}")]
-        Task PostUserAsync([Body] User user, [Header("Authorization")] string authorization, string apiVersion = "1.6");
+        Task<HttpResponseMessage> PostUserAsync([Body] User user, [Header("Authorization")] string authorization, string apiVersion = "1.6");
     }
 }

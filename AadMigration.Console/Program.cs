@@ -8,7 +8,6 @@ using AadMigration.Common.Settings;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Newtonsoft.Json;
 
 namespace AadMigration.Console
 {
@@ -19,7 +18,16 @@ namespace AadMigration.Console
 
         static void Main()
         {
-            MainAsync().GetAwaiter().GetResult();
+            try
+            {
+                MainAsync().GetAwaiter().GetResult();
+            }
+            catch (Exception)
+            {
+                // ignored
+            }
+            System.Console.WriteLine("Press any key to continue...");
+            System.Console.Read();
         }
 
         public static async Task MainAsync()
@@ -73,15 +81,8 @@ namespace AadMigration.Console
 
             foreach (var user in users)
             {
-                try
-                {
-                    _logger.LogInformation($"Import user: {user.DisplayName} / {user.UserPrincipalName}");
-                    await graphApiService.AddUserAsync(user, token);
-                }
-                catch (Exception)
-                {
-                    _logger.LogError("Unable to import."); // todo
-                }
+                _logger.LogInformation($"Import user: {user.DisplayName} / {user.UserPrincipalName}");
+                await graphApiService.AddUserAsync(user, token);
             }
         }
     }
